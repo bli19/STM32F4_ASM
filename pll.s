@@ -1,0 +1,168 @@
+RCC_CR		           EQU 0x40023800  ;CR ADDRESS offset  :0x 
+RCC_CFGR	           EQU 0x40023804
+RCC_CFG				   EQU 0x40023808			  											
+RCC_CIR			       EQU 0x4002380C  ; i do not know!
+RCC_AHB1			   EQU 0x40023830	
+RCC_APB1			   EQU 0x40023840	
+RCC_APB2        	   EQU 0x40023864
+RCC_CSR				   EQU 0x40023874  ; Crystal Value
+FLASH_ACR			   EQU 0x40023c00 
+	
+        AREA    |.text|, CODE, READONLY, ALIGN=2
+        THUMB
+        EXPORT  PLL_getV	
+
+
+PLL_getV
+;Reset the RCx
+	LDR R3,=RCC_CR
+	LDR R1,[R3] ;Get the value of RCC_CR default value, R1=[R3] 
+	ORR R1,R1,#0x00000001
+    STR R1,[R3] 
+  
+    LDR R3,=RCC_CFG ;CFGR RESET
+	LDR R1,=0x00000000;R1->[R3]
+	STR R1,[R3] 
+	
+	LDR R3,=RCC_CR ;0X7A83 
+	LDR R1,[R3]
+	LDR R0,=0xFEF6FFFF
+	AND R1,R1,R0
+	STR R1,[R3]
+	
+	LDR R3,=RCC_CFGR ;CFGR RESET
+	LDR R1,=0x24003010
+	STR R1,[R3] 	
+	
+	LDR R3,=RCC_CR  
+	LDR R1,[R3]
+	LDR R0,=0xFFFBFFFF
+	AND R1,R1,R0
+	STR R1,[R3]
+	
+	LDR R3,=RCC_CIR ;CFGR RESET
+	LDR R1,=0x00000000
+	STR R1,[R3] 
+
+saclk
+	LDR R3,=RCC_CR ;Turon on HSE
+	LDR R1,[R3]
+	ORR R1,R1,#0x00010000
+    STR R1,[R3]	
+	LDR R0,=0x00000000  
+	
+secondorde	
+    LDR R3,=RCC_CR
+	LDR R1,[R3] ;RR1=[RCC_CR]
+    AND R1,R1,#0x00020000
+	ADD R0,R0,#0x00000001 
+	CMP R1,#0  
+	BEQ secondorde
+	CMP R0,#0x0500
+	BNE secondorde
+    NOP
+	;LDR R1,=0x000000001
+	
+pwrse 
+    
+	LDR R0,=RCC_APB1
+	LDR R1,[R0]
+	ORR R1,R1,#0x10000000
+	STR R1,[R0]
+	
+	LDR R0,=0x40007000
+	LDR R1,[R0]
+	ORR R1,R1,#0x0004000
+	STR R1,[R0]
+;CFGR	 
+;
+    LDR R0,=RCC_CFG
+	LDR R1,[R0] 
+	ORR R1,R1,#0x00000000
+	STR R1,[R0]
+; /* PCLK2 = HCLK / 2*/	
+	LDR R1,=RCC_CFG
+	LDR R0,[R1]; r0=[rccS]
+	ORR R0,R0,#0x00008000
+	STR R0,[R1]
+; /* PCLK1 = HCLK / 4*/
+    LDR R1,=RCC_CFG
+    LDR R0,[R1]; r0=[rccS]
+	ORR R0,R0,#0x00001400
+	STR R0,[R1]   
+ ;Main PLL
+    LDR R0,=RCC_CFGR
+	LDR R1,[R0]
+	LDR R2,=0x07405408
+	MOV R1,R2
+	STR R1,[R0]
+;eANBLE PLL
+    LDR R0,=RCC_CR
+    LDR R1,[R0] 
+	ORR R1,R1,#0x01000000
+	STR R1,[R0]
+;Wait until the main PLL
+greatpll
+    LDR R0,=RCC_CR
+	LDR R1,[R0]
+	AND R1,R1,#0x02000000
+	CMP r1,#0
+	BEQ greatpll
+ ;FLASh Acr 
+    LDR R0,=FLASH_ACR
+	LDR R1,[R0]
+	LDR R2,=0x00000605
+	MOV R1,R2
+	STR R1,[R0]
+	
+	
+	
+ 
+    LDR R0,=RCC_CFG
+    LDR R1,[R0]
+	LDR R2,=0x0000940A ;
+	ORR R1,R1,R2
+	STR R1,[R0]
+ 
+    LDR R0,=0x00000003
+    CMP R0,R0
+	ldr R2,=RCC_CFG
+	LDR R2,[R3]
+    ORR R0,R0,R2
+	STR R0,[R3]
+
+;wiat till PLl
+Waitman
+    LDR R0,=RCC_CFG
+	LDR R1,[R0]
+    AND R1,R1,#0x000000C
+	CMP R1,#0x00000008
+	BNE  Waitman
+	;LDR R3,=RCC_CR
+	;LDR R1,[R3] ;RR1=[RCC_CR]
+	;AND R1,R1,#0x00020000
+	;CMP R1,#0x00
+	
+	
+	;LDR R3,=RCC_CFGR
+	;LDR R1,=0x27405408
+    ;STR R1, [R3] 
+	;LDR R3,=RCC_CFG
+	;LDR R1,=0x0000940A
+    ;STR R1, [R3] 	
+	;LDR R3,=RCC_AHB1
+	;LDR R1,=0x00100000
+    ;STR R1, [R3]
+	;LDR R3,=RCC_APB1      
+    ;LDR R1,=0x10000000
+    ;STR R1, [R3]	 	
+;;	LDR R3,=RCC_APB2      
+;;   LDR R1,=0x00075F33
+;;   STR R1, [R3]
+	;LDR R3,=RCC_CSR      
+    ;LDR R1,=0x1E000000
+    ;STR R1, [R3]	
+	BX  LR
+	ALIGN
+	END
+		
